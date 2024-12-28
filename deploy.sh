@@ -1,10 +1,11 @@
 #!/bin/bash
-
+echo "输入您解析好的域名:"
+read DOMAIN
 # 定义目录和配置
 PROJECT_ROOT="/var/www/chat-app"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
 BACKEND_DIR="$PROJECT_ROOT/backend"
-DOMAIN="chat.777cloud.life"
+DOMAIN="$DOMAIN"
 SSL_CERT="/etc/letsencrypt/live/$DOMAIN/fullchain.pem"
 SSL_KEY="/etc/letsencrypt/live/$DOMAIN/privkey.pem"
 
