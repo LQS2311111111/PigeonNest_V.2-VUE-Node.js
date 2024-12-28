@@ -111,9 +111,15 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           style="display: none;"
         />
       </div>
+
+      <!-- GitHub 项目跳转按钮 -->
+      <div class="github-link">
+        <button @click="https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git" class="github-button">查看我的 GitHub 项目</button>
+      </div>
     </div>
   </div>
 </template>
+
 
 <script>
 import { io } from "socket.io-client";
@@ -226,6 +232,11 @@ export default {
         this.selectedFile = null;
       }
     },
+
+    // 跳转到GitHub项目
+    goToGitHub() {
+      window.location.href = "https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git"; // 请替换为你的GitHub项目链接
+    }
   },
 
   mounted() {
@@ -250,6 +261,7 @@ export default {
   },
 };
 </script>
+
 
 <style scoped>
 /* 样式：全局容器 */
@@ -424,6 +436,26 @@ export default {
 /* 隐藏的文件输入框 */
 .file-input {
   display: none;
+}
+
+/* GitHub按钮样式 */
+.github-link {
+  margin-top: 20px;
+  text-align: center;
+}
+
+.github-button {
+  padding: 10px 20px;
+  background-color: #333;
+  color: #fff;
+  font-size: 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.github-button:hover {
+  background-color: #007BFF;
 }
 </style>
 EOF
