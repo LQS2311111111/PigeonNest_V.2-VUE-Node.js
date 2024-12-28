@@ -80,3 +80,6 @@ chat-app/
   ```bash
 chmod +x undeploy.sh
 bash undeploy.sh
+
+###5.打赏开发者：
+
