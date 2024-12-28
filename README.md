@@ -57,6 +57,7 @@ chat-app/
    ufw allow 443
    git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git
    cd chat-app
+   chmod +x deploy.sh
    bash deploy.sh
    
 2.部署脚本将自动执行以下操作：
