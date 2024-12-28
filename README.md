@@ -69,3 +69,8 @@ chat-app/
 
 ### 3. 访问应用
 部署完成后，您可以通过浏览器访问您的域名（例如：https://域名）来使用该应用.
+
+### 4.（可选）删除Chat-app项目:
+```bash
+            chmod +x undeploy.sh
+            bash undeploy.sh
