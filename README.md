@@ -77,9 +77,9 @@ chat-app/
 
 ### 4.（可选）删除Chat-app项目:
 1.删除该项目:
-  ```bash
+```bash
 chmod +x undeploy.sh
 bash undeploy.sh
 
-###5.打赏开发者：
+
 
