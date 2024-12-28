@@ -57,14 +57,14 @@ chat-app/
 
 ### 2. 执行部署脚本
 1. 克隆项目到您的服务器：
-   ```bash
-   ufw allow 3000 //放行Websokets.io服务端口
-   ufw allow 80//放行HTTP服务端口
-   ufw allow 443//放行HTTPS服务端口
-   git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git //拉取GITHUB项目
-   cd chat-app
-   chmod +x deploy.sh
-   bash deploy.sh
+```bash
+ufw allow 3000 //放行Websokets.io服务端口
+ufw allow 80//放行HTTP服务端口
+ufw allow 443//放行HTTPS服务端口
+git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git //拉取GITHUB项目
+cd chat-app
+chmod +x deploy.sh
+bash deploy.sh
    
 2.部署脚本将自动执行以下操作：
 安装系统依赖（包括 Nginx, Node.js, Certbot 等）。
