@@ -57,10 +57,10 @@ chat-app/
 ### 2. 执行部署脚本
 1. 克隆项目到您的服务器：
    ```bash
-   ufw allow 3000
-   ufw allow 80
-   ufw allow 443
-   git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git
+   ufw allow 3000 //放行Websokets.io服务端口
+   ufw allow 80//放行HTTP服务端口
+   ufw allow 443//放行HTTPS服务端口
+   git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git //拉取GITHUB项目
    cd chat-app
    chmod +x deploy.sh
    bash deploy.sh
@@ -73,7 +73,7 @@ chat-app/
 自动申请并配置 SSL 证书。
 
 ### 3. 访问应用
-部署完成后，您可以通过浏览器访问您的域名**（例如：https://域名）**来使用该应用.
+部署完成后，您可以通过浏览器访问您的域名（例如：https://域名）来使用该应用.
 
 ### 4.（可选）删除Chat-app项目:
 1.删除该项目:
