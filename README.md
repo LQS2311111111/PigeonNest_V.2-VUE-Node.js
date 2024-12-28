@@ -81,3 +81,8 @@ chat-app/
 ```bash
 chmod +x undeploy.sh
 bash undeploy.sh
+
+### 5.常用启动代码
+```bash
+npm run build //迭代静态web文件
+sudo cp -r dist/* /var/www/html/
