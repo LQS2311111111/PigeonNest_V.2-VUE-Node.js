@@ -1,6 +1,9 @@
 #!/bin/bash
+
+# 定义全局域名引用
 echo "输入您解析好的域名:"
 read DOMAIN
+
 # 定义目录和配置
 PROJECT_ROOT="/var/www/chat-app"
 FRONTEND_DIR="$PROJECT_ROOT/frontend"
