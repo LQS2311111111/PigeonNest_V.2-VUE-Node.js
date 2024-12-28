@@ -29,16 +29,16 @@
 ## 项目结构
 
 chat-app/
+│ 
+├── frontend/ # 前端项目文件 
             │ 
-            ├── frontend/ # 前端项目文件 
-                        │ 
-                        ├── src/ # 前端源代码 
-                        └── package.json # 前端依赖 
-            ├── backend/ # 后端项目文件 
-                        │ 
-                        ├── app.js # 后端代码入口 
-                        └── package.json # 后端依赖 
-            └── deploy.sh # 自动化部署脚本
+            ├── src/ # 前端源代码 
+            └── package.json # 前端依赖 
+├── backend/ # 后端项目文件 
+            │ 
+            ├── app.js # 后端代码入口 
+            └── package.json # 后端依赖 
+└── deploy.sh # 自动化部署脚本
 
 
 ## 部署步骤
