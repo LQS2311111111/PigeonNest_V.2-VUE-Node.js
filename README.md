@@ -80,6 +80,3 @@ chat-app/
 ```bash
 chmod +x undeploy.sh
 bash undeploy.sh
-
-
-
