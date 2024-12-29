@@ -64,25 +64,25 @@ EOF
 cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 <template>
   <div id="app" class="chat-container">
-    <!-- 密钥输入页 -->
-    <div v-if="!isKeyValid" class="key-container">
+    <!-- 频道号输入页 -->
+    <div v-if="!isChannelValid" class="key-container">
       <input
-        v-model="key"
+        v-model="channel"
         type="text"
         class="key-input"
-        placeholder="请输入密钥"
+        placeholder="请输入频道号"
       />
-      <button @click="validateKey" class="key-button">验证密钥</button>
-      <div v-if="keyError" class="error-message">密钥错误，请重试。</div>
+      <button @click="joinChannel" class="key-button">加入频道</button>
+      <div v-if="channelError" class="error-message">请输入有效的频道号。</div>
     </div>
 
     <!-- 聊天页面 -->
     <div v-else>
-      <div class="header">去中心化即时通讯</div>
+      <div class="header">匿名鸽巢 - Pigeon Nest - 频道：{{ channel }}</div>
       <div class="messages">
         <div
           v-for="(msg, index) in messages"
-          :key="index"
+          :key="msg.id"
           class="message"
           :class="{ 'sent': msg.sender === 'self', 'received': msg.sender !== 'self' }"
         >
@@ -90,17 +90,24 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           <div class="message-content">
             <span v-if="msg.type === 'text'">{{ msg.text }}</span>
             <span v-if="msg.type === 'file'">
-              <a :href="msg.fileUrl" target="_blank">{{ msg.fileName }}</a>
+              <img v-if="msg.fileUrl" :src="msg.fileUrl" alt="file preview" class="file-preview"/>
+              <a v-if="!msg.fileUrl" :href="msg.fileUrl" target="_blank">{{ msg.fileName }}</a>
             </span>
           </div>
         </div>
       </div>
 
       <div class="input-container">
+        <!-- GitHub 图标按钮 -->
+        <a href="https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git" target="_blank" class="github-button">
+          <i class="fab fa-github"></i>
+        </a>
+
+        <!-- 输入框区域 -->
         <input
           v-model="newMessage"
           placeholder="输入消息..."
-          @keydown.enter="sendMessage"
+          @keyup.enter="sendMessage"
           class="input-box"
         />
         <button @click="sendMessage" class="send-button">发送</button>
@@ -111,13 +118,7 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           ref="fileInput"
           @change="handleFileUpload"
           class="file-input"
-          style="display: none;"
-        />
-      </div>
-
-      <!-- GitHub 项目跳转按钮 -->
-      <div class="github-link">
-        <button @click="goToGitHub" class="github-button">查看我的 GitHub 项目</button>
+          style="display: none;"/>
       </div>
     </div>
   </div>
@@ -126,12 +127,15 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 <script>
 import { io } from "socket.io-client";
 
+// 在需要使用 FontAwesome 的 Vue 组件中引入
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
 export default {
   data() {
     return {
-      key: "", // 用户输入的密钥
-      isKeyValid: false, // 密钥验证状态
-      keyError: false, // 错误提示
+      channel: "", // 用户输入的频道号
+      isChannelValid: false, // 频道号验证状态
+      channelError: false, // 错误提示
       newMessage: "", // 用户输入的文本消息
       messages: [], // 消息列表
       socket: null, // WebSocket 连接实例
@@ -139,46 +143,39 @@ export default {
     };
   },
   methods: {
-    // 密钥哈希验证
-    async hashKey(key) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(key);
-      return crypto.subtle.digest("SHA-256", data).then((hashBuffer) => {
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
-      });
-    },
-
-    // 验证密钥
-    async validateKey() {
-      if (!this.key.trim()) {
-        this.keyError = true;
-        alert("密钥不能为空！");
+    // 加入频道
+    joinChannel() {
+      if (!this.channel.trim()) {
+        this.channelError = true;
+        alert("频道号不能为空！");
         return;
       }
 
-      try {
-        const hashedKey = await this.hashKey(this.key);
-        const response = await fetch("https://chat.777cloud.life/validateKey", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ key: hashedKey }),
-        });
-        const data = await response.json();
+      // 发送加入频道事件
+      this.socket.emit("joinChannel", this.channel);
+      console.log(`已加入频道: ${this.channel}`);
+      
+      // 更新状态
+      this.isChannelValid = true;
+      this.channelError = false; // 清除错误提示
 
-        if (data.success) {
-          this.isKeyValid = true; // 密钥验证成功
-        } else {
-          this.keyError = true; // 密钥错误
-          alert(data.message || "验证失败，请重新输入密钥！");
+      // 监听频道消息
+      this.socket.on("message", (msg) => {
+        if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
+          console.log("接收到消息:", msg);
+          this.messages.push(msg); // 添加到消息列表
+          this.scheduleMessageDeletion(msg); // 设置消息过期时间
         }
-      } catch (error) {
-        console.error("验证失败", error);
-        this.keyError = true;
-        alert("服务器出错，请稍后再试！");
-      }
+      });
+
+      // 监听文件消息
+      this.socket.on("fileMessage", (msg) => {
+        if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
+          console.log("接收到文件消息:", msg);
+          this.messages.push(msg); // 添加到消息列表
+          this.scheduleMessageDeletion(msg); // 设置消息过期时间
+        }
+      });
     },
 
     // 发送文本或文件消息
@@ -186,26 +183,39 @@ export default {
       if (!this.newMessage.trim() && !this.selectedFile) return;
 
       const msg = {
+        id: Date.now(), // 添加唯一id，避免重复
         text: this.newMessage,
         sender: "self",
         type: this.selectedFile ? "file" : "text",
         fileName: this.selectedFile ? this.selectedFile.name : null,
         fileUrl: this.selectedFile ? URL.createObjectURL(this.selectedFile) : null,
+        channel: this.channel, // 所属频道号
+        expirationTime: Date.now() + 30000, // 设置消息过期时间（30秒）
       };
 
-      this.messages.push(msg);
-      this.socket.emit(this.selectedFile ? "fileMessage" : "message", msg);
+      this.messages.push(msg); // 仅在消息发送成功后添加到本地
+      this.socket.emit(this.selectedFile ? "fileMessage" : "message", msg); // 发送消息
+      console.log("已发送消息:", msg);
+      this.newMessage = ""; // 清空输入框
+      this.selectedFile = null; // 清空选中文件
 
-      this.newMessage = "";
-      this.selectedFile = null;
+      // 设置定时删除自己发送的消息
+      this.scheduleMessageDeletion(msg);
     },
 
-    // 触发文件上传
+    // 定时删除消息
+    scheduleMessageDeletion(msg) {
+      setTimeout(() => {
+        this.messages = this.messages.filter(m => m.id !== msg.id); // 删除该消息
+      }, msg.expirationTime - Date.now()); // 根据过期时间来删除消息
+    },
+
+    // 触发文件上传逻辑
     triggerFileUpload() {
       this.$refs.fileInput.click();
     },
 
-    // 文件上传处理
+    // 处理文件上传
     handleFileUpload(event) {
       const file = event.target.files[0];
       if (!file) return;
@@ -226,45 +236,36 @@ export default {
       }
 
       const msg = {
+        id: Date.now(), // 添加唯一id，避免重复
         sender: "self",
         type: "file",
         fileName: file.name,
         fileUrl: URL.createObjectURL(file),
+        channel: this.channel,
+        expirationTime: Date.now() + 30000, // 设置消息过期时间（30秒）
       };
 
       this.messages.push(msg);
       this.socket.emit("fileMessage", msg);
-      this.$refs.fileInput.value = ""; // 清空文件输入框状态
+      console.log("已发送文件消息:", msg);
+      this.$refs.fileInput.value = "";
       this.selectedFile = null;
-    },
 
-    // 跳转到 GitHub 页面
-    goToGitHub() {
-      window.open("https://github.com/LQS2311111111/chat-app-VUE-Node.js-", "_blank");
+      // 设置定时删除自己发送的文件消息
+      this.scheduleMessageDeletion(msg);
     },
   },
 
   mounted() {
+    // WebSocket连接和自动重连
     this.socket = io("https://chat.777cloud.life", {
-      path: "/socket.io/",
-      transports: ["websocket"],
-      reconnection: true, // 自动重连
-      reconnectionAttempts: 5, // 最大尝试次数
-      reconnectionDelay: 2000, // 重连间隔时间
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
     });
 
-    this.socket.on("message", (msg) => {
-      msg.senderName = msg.senderName || "未知用户";
-      this.messages.push(msg);
-    });
-
-    this.socket.on("fileMessage", (msg) => {
-      msg.senderName = msg.senderName || "未知用户";
-      this.messages.push(msg);
-    });
-
-    this.socket.on("connect_error", () => {
-      alert("连接失败，请稍后再试...");
+    this.socket.on("connect", () => {
+      console.log("WebSocket 连接成功，客户端 ID:", this.socket.id);
     });
   },
 
@@ -280,15 +281,16 @@ export default {
 <style scoped>
 /* 样式：全局容器 */
 .chat-container {
-  font-family: Arial, sans-serif;
+  font-family: 'Arial', sans-serif;
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: #f5f5f5;
-  color: #333;
+  background: #1f1b2e; /* 黑紫色背景 */
+  color: white; /* 文字颜色为白色 */
+  font-size: 16px;
 }
 
-/* 密钥输入页面 */
+/* 频道号输入页面 */
 .key-container {
   display: flex;
   justify-content: center;
@@ -298,37 +300,44 @@ export default {
 }
 
 .key-input {
-  padding: 10px;
-  font-size: 16px;
-  border-radius: 5px;
-  margin-right: 10px;
+  padding: 15px;
+  font-size: 18px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+  width: 300px;
+  text-align: center;
 }
 
 .key-button {
-  padding: 10px 20px;
-  background-color: #4caf50;
+  padding: 15px 30px;
+  background-color: #7a4dff; /* 紫色 */
   color: white;
   border: none;
-  border-radius: 5px;
+  border-radius: 20px;
   cursor: pointer;
+  font-size: 16px;
 }
 
 .key-button:hover {
-  background-color: #45a049;
+  background-color: #5b39b7; /* 深紫色 */
 }
 
 .error-message {
   color: red;
+  font-size: 14px;
   margin-top: 10px;
 }
 
 /* 头部样式 */
 .header {
   padding: 20px;
-  background: #000;
-  color: #fff;
+  background-color: #111;
+  color: white;
   text-align: center;
   font-size: 20px;
+  font-weight: bold;
+  border-bottom: 2px solid #444;
 }
 
 /* 消息列表 */
@@ -336,10 +345,11 @@ export default {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
-  background: #fff;
+  background-color: #2c2a3c; /* 深紫色背景 */
   display: flex;
   flex-direction: column;
   gap: 10px;
+  max-height: calc(100vh - 160px);
 }
 
 /* 消息气泡 */
@@ -351,23 +361,23 @@ export default {
   word-break: break-word;
   display: block;
   margin-bottom: 10px;
-  background-color: #f1f0f0;
-  color: #333;
+  background-color: #3b3b47; /* 黑色气泡 */
+  color: white;
   align-self: flex-start;
 }
 
 /* 发送消息气泡 */
 .message.sent {
-  background: #000;
-  color: #fff;
+  background-color: #7a4dff; /* 紫色 */
+  color: white;
   align-self: flex-end;
   text-align: left;
 }
 
 /* 接收消息气泡 */
 .message.received {
-  background: #f1f0f0;
-  color: #333;
+  background-color: #3b3b47;
+  color: white;
   align-self: flex-start;
   text-align: left;
 }
@@ -377,99 +387,86 @@ export default {
   font-weight: bold;
   font-size: 14px;
   margin-bottom: 5px;
-  color: #007BFF;
+  color: #c9a0ff; /* 紫色发送者名字 */
 }
 
 /* 消息内容 */
 .message-content {
   font-size: 16px;
-}
-
-/* 时间戳 */
-.timestamp {
-  font-size: 12px;
-  color: #007BFF;
-  margin-top: 5px;
-  text-align: right;
-  width: 100%;
-  font-style: italic;
+  line-height: 1.4;
 }
 
 /* 输入框区域 */
 .input-container {
   display: flex;
-  padding: 10px;
-  background: #000;
+  padding: 15px;
+  background-color: #2c2a3c; /* 深紫色 */
   position: sticky;
   bottom: 0;
+  border-top: 1px solid #444;
 }
 
 /* 输入框 */
 .input-box {
   flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 15px;
+  padding: 12px 15px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
   margin-right: 10px;
   font-size: 16px;
 }
 
 /* 按钮样式 */
 .send-button {
-  padding: 10px 20px;
+  padding: 12px 20px;
   border: none;
-  border-radius: 15px;
-  background: #fff;
-  color: #000;
+  border-radius: 20px;
+  background-color: #7a4dff; /* 紫色 */
+  color: white;
   font-size: 16px;
   cursor: pointer;
 }
 
 .send-button:hover {
-  background: #000;
-  color: #fff;
+  background-color: #5b39b7; /* 深紫色 */
 }
 
 /* 上传文件按钮 */
 .upload-button {
-  padding: 10px 20px;
+  padding: 12px 20px;
+  background-color: #28a745; /* 绿色 */
+  color: white;
   border: none;
-  border-radius: 15px;
-  background: #fff;
-  color: #000;
-  font-size: 16px;
+  border-radius: 20px;
   cursor: pointer;
   margin-left: 10px;
 }
 
 .upload-button:hover {
-  background: #000;
-  color: #fff;
+  background-color: #218838; /* 深绿色 */
 }
 
-/* 隐藏的文件输入框 */
 .file-input {
   display: none;
 }
 
-/* GitHub按钮样式 */
-.github-link {
-  margin-top: 20px;
-  text-align: center;
+/* 给 GitHub 图标设置样式 */
+.input-container i {
+  font-size: 32px; /* 更大的图标 */
+  color: white;
+  margin-right: 10px;
 }
 
-.github-button {
-  padding: 10px 20px;
-  background-color: #333;
-  color: #fff;
-  font-size: 16px;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
+.input-container i:hover {
+  color: #7a4dff; /* 鼠标悬停时变色 */
 }
 
-.github-button:hover {
-  background-color: #007BFF;
+/* 文件预览样式 */
+.file-preview {
+  border: 2px solid #444;
+  border-radius: 10px;
+  max-width: 100%;
+  height: auto;
 }
 </style>
 EOF
@@ -499,7 +496,6 @@ cat > "$BACKEND_DIR/app.js" <<EOF
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const crypto = require("crypto");
 
 const app = express();
 const server = http.createServer(app);
@@ -507,95 +503,60 @@ const io = new Server(server);
 
 app.use(express.json());
 
-const messages = {}; // 内存中的消息存储 { messageId: message }
-const fileStorage = {}; // 存储上传的文件 { fileId: fileData }
+// 日志记录
+const log = (message) => console.log(`[LOG] ${new Date().toISOString()}: ${message}`);
 
-// 工具函数：生成唯一 ID
-function generateId() {
-  return crypto.randomBytes(16).toString("hex");
-}
+// 频道号格式验证函数
+const isValidChannel = (channel) => {
+  const channelRegex = /^[a-zA-Z0-9_-]{3,20}$/; // 频道号必须是3-20个字符，且只能包含字母、数字、下划线和短横线
+  return channelRegex.test(channel);
+};
 
-// 验证密钥接口
-app.post("/validateKey", (req, res) => {
-  const { key } = req.body;
-
-  // 用于模拟的密钥验证，实际项目可替换为数据库查询或更安全的实现
-  const validKeyHash = "your_predefined_hashed_key"; // 预设的哈希值
-  if (key === validKeyHash) {
-    res.json({ success: true });
-  } else {
-    res.status(400).json({ success: false, message: "密钥验证失败" });
-  }
-});
-
-// WebSocket连接和事件处理
 io.on("connection", (socket) => {
-  console.log("用户已连接", socket.id);
+  log(`用户已连接 ${socket.id}`);
 
-  // 处理接收到的消息
-  socket.on("message", (data) => {
-    const messageId = generateId();
-    const message = {
-      ...data,
-      messageId,
-      isRead: false,
-      timestamp: Date.now(),
-    };
-
-    messages[messageId] = message;
-
-    // 广播消息给其他客户端
-    socket.broadcast.emit("message", message);
-    console.log("消息存储并广播：", message);
-  });
-
-  // 处理文件消息
-  socket.on("fileMessage", (data) => {
-    const messageId = generateId();
-    const fileId = generateId();
-
-    fileStorage[fileId] = data.fileUrl; // 假设已上传文件有对应URL
-    const message = {
-      ...data,
-      messageId,
-      fileId,
-      isRead: false,
-      timestamp: Date.now(),
-    };
-
-    messages[messageId] = message;
-
-    // 广播消息给其他客户端
-    socket.broadcast.emit("fileMessage", message);
-    console.log("文件消息存储并广播：", message);
-  });
-
-  // 处理即阅即焚请求
-  socket.on("readMessage", (messageId) => {
-    const message = messages[messageId];
-    if (message) {
-      delete messages[messageId];
-
-      // 如果是文件消息，移除文件存储记录
-      if (message.fileId) {
-        delete fileStorage[message.fileId];
-      }
-
-      // 通知其他客户端删除消息
-      io.emit("deleteMessage", messageId);
-      console.log("消息已被销毁：", messageId);
+  // 加入频道
+  socket.on("joinChannel", (channel) => {
+    if (!channel || !isValidChannel(channel)) {
+      socket.emit("error", { message: "频道号无效或格式错误" });
+      return;
     }
+    socket.join(channel);
+    log(`用户 ${socket.id} 加入频道 ${channel}`);
+  });
+
+  // 接收普通消息并广播给对应频道
+  socket.on("message", (data) => {
+    if (!data.channel || !isValidChannel(data.channel) || !data.text || typeof data.text !== "string") {
+      log("收到无效消息，未发送");
+      socket.emit("error", { message: "无效消息，无法发送" });
+      return;
+    }
+    log(`收到消息发送至频道 ${data.channel}:`, data);
+    io.to(data.channel).emit("message", { ...data, id: Date.now() }); // 广播给对应频道
+  });
+
+  // 接收文件消息并广播给对应频道
+  socket.on("fileMessage", (data) => {
+    if (!data.channel || !isValidChannel(data.channel) || !data.fileName || !data.fileUrl) {
+      log("收到无效文件消息，未发送");
+      socket.emit("error", { message: "无效文件消息，无法发送" });
+      return;
+    }
+    log(`收到文件消息发送至频道 ${data.channel}:`, data);
+    io.to(data.channel).emit("fileMessage", { ...data, id: Date.now() }); // 广播文件消息
   });
 
   socket.on("disconnect", () => {
-    console.log("用户已断开连接", socket.id);
+    log(`用户已断开连接 ${socket.id}`);
   });
 });
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-  console.log(`服务器运行在端口 ${PORT}`);
+  log(`服务器运行在端口 ${PORT}`);
 });
+
 EOF
 
 cd "$BACKEND_DIR"
