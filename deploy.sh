@@ -98,10 +98,12 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
       </div>
 
       <div class="input-container">
-        <input v-model="newMessage" placeholder="输入消息..."
-  @keydown.enter="sendMessage"
-  class="input-box"
-/>
+        <input
+          v-model="newMessage"
+          placeholder="输入消息..."
+          @keydown.enter="sendMessage"
+          class="input-box"
+        />
         <button @click="sendMessage" class="send-button">发送</button>
         <button @click="triggerFileUpload" class="upload-button">上传文件</button>
         <input
@@ -116,12 +118,11 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 
       <!-- GitHub 项目跳转按钮 -->
       <div class="github-link">
-        <button @click=""goToGitHub" class="github-button">查看我的 GitHub 项目</button>
+        <button @click="goToGitHub" class="github-button">查看我的 GitHub 项目</button>
       </div>
     </div>
   </div>
 </template>
-
 
 <script>
 import { io } from "socket.io-client";
@@ -145,7 +146,7 @@ export default {
       const data = encoder.encode(key);
       return crypto.subtle.digest("SHA-256", data).then((hashBuffer) => {
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
+        return hashArray.map((byte) => byte.toString(16).padStart(2, "0")).join("");
       });
     },
 
@@ -153,36 +154,25 @@ export default {
     async validateKey() {
       try {
         const hashedKey = await this.hashKey(this.key);
-        
-        // 与后端的密钥哈希值进行比对
-        const response = await fetch('https://$DOMAIN/validateKey', {
-          method: 'POST',
+        const response = await fetch("https://your-domain.com/validateKey", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ key: hashedKey })
+          body: JSON.stringify({ key: hashedKey }),
         });
-
         const data = await response.json();
-        
+
         if (data.success) {
           this.isKeyValid = true; // 密钥验证成功
         } else {
           this.keyError = true; // 密钥错误
+          alert("验证失败，请重新输入密钥！");
         }
       } catch (error) {
         console.error("验证失败", error);
         this.keyError = true;
-      }
-    },
-
-    // 检查输入是否包含"上传文件"字眼
-    checkUploadFileCommand() {
-      if (/\b上传文件\b/i.test(this.newMessage.trim())) {
-        setTimeout(() => {
-          this.triggerFileUpload();
-          this.newMessage = "";
-        }, 100);
+        alert("服务器出错，请稍后再试！");
       }
     },
 
@@ -199,23 +189,14 @@ export default {
       };
 
       this.messages.push(msg);
-
-      if (this.selectedFile) {
-        this.socket.emit("fileMessage", msg);
-      } else {
-        this.socket.emit("message", msg);
-      }
+      this.socket.emit(this.selectedFile ? "fileMessage" : "message", msg);
 
       this.newMessage = "";
       this.selectedFile = null;
     },
 
     triggerFileUpload() {
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.click();
-      } else {
-        console.error('未找到文件上传输入框');
-      }
+      this.$refs.fileInput.click();
     },
 
     handleFileUpload(event) {
@@ -231,14 +212,14 @@ export default {
 
         this.messages.push(msg);
         this.socket.emit("fileMessage", msg);
+        this.$refs.fileInput.value = ""; // 清空文件输入框状态
         this.selectedFile = null;
       }
     },
 
-    // 跳转到GitHub项目
     goToGitHub() {
-      window.location.href = "https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git"; // 请替换为你的GitHub项目链接
-    }
+      window.open("https://github.com/LQS2311111111/chat-app-VUE-Node.js-", "_blank");
+    },
   },
 
   mounted() {
@@ -261,9 +242,15 @@ export default {
       alert("连接失败，请稍后再试...");
     });
   },
+
+  beforeDestroy() {
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+  },
 };
 </script>
-
 
 <style scoped>
 /* 样式：全局容器 */
