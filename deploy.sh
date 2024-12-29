@@ -93,7 +93,6 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
               <a :href="msg.fileUrl" target="_blank">{{ msg.fileName }}</a>
             </span>
           </div>
-          <div class="timestamp">{{ new Date(msg.timestamp).toLocaleString() }}</div>
         </div>
       </div>
 
@@ -152,6 +151,12 @@ export default {
 
     // 验证密钥
     async validateKey() {
+      if (!this.key.trim()) {
+        this.keyError = true;
+        alert("密钥不能为空！");
+        return;
+      }
+
       try {
         const hashedKey = await this.hashKey(this.key);
         const response = await fetch("https://your-domain.com/validateKey", {
@@ -167,7 +172,7 @@ export default {
           this.isKeyValid = true; // 密钥验证成功
         } else {
           this.keyError = true; // 密钥错误
-          alert("验证失败，请重新输入密钥！");
+          alert(data.message || "验证失败，请重新输入密钥！");
         }
       } catch (error) {
         console.error("验证失败", error);
@@ -176,13 +181,13 @@ export default {
       }
     },
 
+    // 发送文本或文件消息
     sendMessage() {
       if (!this.newMessage.trim() && !this.selectedFile) return;
 
       const msg = {
         text: this.newMessage,
         sender: "self",
-        timestamp: new Date(),
         type: this.selectedFile ? "file" : "text",
         fileName: this.selectedFile ? this.selectedFile.name : null,
         fileUrl: this.selectedFile ? URL.createObjectURL(this.selectedFile) : null,
@@ -195,28 +200,45 @@ export default {
       this.selectedFile = null;
     },
 
+    // 触发文件上传
     triggerFileUpload() {
       this.$refs.fileInput.click();
     },
 
+    // 文件上传处理
     handleFileUpload(event) {
       const file = event.target.files[0];
-      if (file) {
-        const msg = {
-          sender: "self",
-          timestamp: new Date(),
-          type: "file",
-          fileName: file.name,
-          fileUrl: URL.createObjectURL(file),
-        };
+      if (!file) return;
 
-        this.messages.push(msg);
-        this.socket.emit("fileMessage", msg);
-        this.$refs.fileInput.value = ""; // 清空文件输入框状态
-        this.selectedFile = null;
+      const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+      const maxSizeMB = 5;
+
+      if (!allowedTypes.includes(file.type)) {
+        alert("仅支持上传图片或PDF文件！");
+        this.$refs.fileInput.value = ""; // 清空选择的文件
+        return;
       }
+
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        alert(`文件大小不能超过 ${maxSizeMB} MB！`);
+        this.$refs.fileInput.value = "";
+        return;
+      }
+
+      const msg = {
+        sender: "self",
+        type: "file",
+        fileName: file.name,
+        fileUrl: URL.createObjectURL(file),
+      };
+
+      this.messages.push(msg);
+      this.socket.emit("fileMessage", msg);
+      this.$refs.fileInput.value = ""; // 清空文件输入框状态
+      this.selectedFile = null;
     },
 
+    // 跳转到 GitHub 页面
     goToGitHub() {
       window.open("https://github.com/LQS2311111111/chat-app-VUE-Node.js-", "_blank");
     },
@@ -225,7 +247,10 @@ export default {
   mounted() {
     this.socket = io("https://chat.777cloud.life", {
       path: "/socket.io/",
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
+      reconnection: true, // 自动重连
+      reconnectionAttempts: 5, // 最大尝试次数
+      reconnectionDelay: 2000, // 重连间隔时间
     });
 
     this.socket.on("message", (msg) => {
