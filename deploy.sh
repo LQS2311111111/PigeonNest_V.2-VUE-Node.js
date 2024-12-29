@@ -251,371 +251,52 @@ export default {
       this.$refs.fileInput.value = "";
       this.selectedFile = null;
 
-      // 设置定时删除自己发送的文件消息
+      // 设置定时删除文件消息
       this.scheduleMessageDeletion(msg);
-    },
-  },
-
-  mounted() {
-    // WebSocket连接和自动重连
-    this.socket = io("https://chat.777cloud.life", {
-      reconnection: true,
-      reconnectionAttempts: 5,
-      reconnectionDelay: 1000,
-    });
-
-    this.socket.on("connect", () => {
-      console.log("WebSocket 连接成功，客户端 ID:", this.socket.id);
-    });
-  },
-
-  beforeDestroy() {
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
     }
   },
+
+  created() {
+    this.socket = io("https://your-server-domain"); // 替换为你的后端域名
+  }
 };
 </script>
 
 <style scoped>
-/* 样式：全局容器 */
-.chat-container {
-  font-family: 'Arial', sans-serif;
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #1f1b2e; /* 黑紫色背景 */
-  color: white; /* 文字颜色为白色 */
-  font-size: 16px;
-}
-
-/* 频道号输入页面 */
-.key-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  flex-direction: column;
-}
-
-.key-input {
-  padding: 15px;
-  font-size: 18px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  margin-bottom: 20px;
-  width: 300px;
-  text-align: center;
-}
-
-.key-button {
-  padding: 15px 30px;
-  background-color: #7a4dff; /* 紫色 */
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.key-button:hover {
-  background-color: #5b39b7; /* 深紫色 */
-}
-
-.error-message {
-  color: red;
-  font-size: 14px;
-  margin-top: 10px;
-}
-
-/* 头部样式 */
-.header {
-  padding: 20px;
-  background-color: #111;
-  color: white;
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-  border-bottom: 2px solid #444;
-}
-
-/* 消息列表 */
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  background-color: #2c2a3c; /* 深紫色背景 */
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: calc(100vh - 160px);
-}
-
-/* 消息气泡 */
-.message {
-  max-width: 70%;
-  padding: 12px 15px;
-  border-radius: 15px;
-  word-wrap: break-word;
-  word-break: break-word;
-  display: block;
-  margin-bottom: 10px;
-  background-color: #3b3b47; /* 黑色气泡 */
-  color: white;
-  align-self: flex-start;
-}
-
-/* 发送消息气泡 */
-.message.sent {
-  background-color: #7a4dff; /* 紫色 */
-  color: white;
-  align-self: flex-end;
-  text-align: left;
-}
-
-/* 接收消息气泡 */
-.message.received {
-  background-color: #3b3b47;
-  color: white;
-  align-self: flex-start;
-  text-align: left;
-}
-
-/* 消息发送者的名字 */
-.sender-name {
-  font-weight: bold;
-  font-size: 14px;
-  margin-bottom: 5px;
-  color: #c9a0ff; /* 紫色发送者名字 */
-}
-
-/* 消息内容 */
-.message-content {
-  font-size: 16px;
-  line-height: 1.4;
-}
-
-/* 输入框区域 */
-.input-container {
-  display: flex;
-  padding: 15px;
-  background-color: #2c2a3c; /* 深紫色 */
-  position: sticky;
-  bottom: 0;
-  border-top: 1px solid #444;
-}
-
-/* 输入框 */
-.input-box {
-  flex: 1;
-  padding: 12px 15px;
-  border-radius: 20px;
-  border: 1px solid #ccc;
-  margin-right: 10px;
-  font-size: 16px;
-}
-
-/* 按钮样式 */
-.send-button {
-  padding: 12px 20px;
-  border: none;
-  border-radius: 20px;
-  background-color: #7a4dff; /* 紫色 */
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.send-button:hover {
-  background-color: #5b39b7; /* 深紫色 */
-}
-
-/* 上传文件按钮 */
-.upload-button {
-  padding: 12px 20px;
-  background-color: #28a745; /* 绿色 */
-  color: white;
-  border: none;
-  border-radius: 20px;
-  cursor: pointer;
-  margin-left: 10px;
-}
-
-.upload-button:hover {
-  background-color: #218838; /* 深绿色 */
-}
-
-.file-input {
-  display: none;
-}
-
-/* 给 GitHub 图标设置样式 */
-.input-container i {
-  font-size: 32px; /* 更大的图标 */
-  color: white;
-  margin-right: 10px;
-}
-
-.input-container i:hover {
-  color: #7a4dff; /* 鼠标悬停时变色 */
-}
-
-/* 文件预览样式 */
-.file-preview {
-  border: 2px solid #444;
-  border-radius: 10px;
-  max-width: 100%;
-  height: auto;
-}
+/* 样式略 */
 </style>
 EOF
 
-cd "$FRONTEND_DIR"
-npm install
-npm run build
-sudo cp -r dist/* /var/www/html/
+# 6. 安装前端依赖并构建项目
+echo "6. 安装前端依赖并构建项目..."
+cd "$FRONTEND_DIR" || exit
+npm install || { echo '前端依赖安装失败'; exit 1; }
+npm run build || { echo '前端构建失败'; exit 1; }
 
-# 6. 写入后端代码
-echo "6. 写入后端代码..."
-cat > "$BACKEND_DIR/package.json" <<EOF
-{
-  "name": "chat-app-backend",
-  "version": "1.0.0",
-  "scripts": {
-    "start": "node app.js"
-  },
-  "dependencies": {
-    "express": "^4.17.1",
-    "socket.io": "^4.0.0"
-  }
-}
-EOF
+# 7. 安装后端依赖并启动应用
+echo "7. 安装后端依赖..."
+cd "$BACKEND_DIR" || exit
+npm install || { echo '后端依赖安装失败'; exit 1; }
 
-cat > "$BACKEND_DIR/app.js" <<EOF
-const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
+echo "8. 启动后端应用..."
+pm2 start "$BACKEND_DIR/server.js" --name "chat-app-backend"
 
-const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+# 8. 配置 Nginx
+echo "9. 配置 Nginx..."
+sudo cp "$PROJECT_ROOT/nginx/your-app.conf" /etc/nginx/sites-available/your-app.conf
+sudo ln -s /etc/nginx/sites-available/your-app.conf /etc/nginx/sites-enabled/
 
-app.use(express.json());
+# 9. 重启 Nginx
+echo "10. 重启 Nginx..."
+sudo nginx -t && sudo systemctl restart nginx
 
-// 日志记录
-const log = (message) => console.log(`[LOG] ${new Date().toISOString()}: ${message}`);
-
-// 频道号格式验证函数
-const isValidChannel = (channel) => {
-  const channelRegex = /^[a-zA-Z0-9_-]{3,20}$/; // 频道号必须是3-20个字符，且只能包含字母、数字、下划线和短横线
-  return channelRegex.test(channel);
-};
-
-io.on("connection", (socket) => {
-  log(`用户已连接 ${socket.id}`);
-
-  // 加入频道
-  socket.on("joinChannel", (channel) => {
-    if (!channel || !isValidChannel(channel)) {
-      socket.emit("error", { message: "频道号无效或格式错误" });
-      return;
-    }
-    socket.join(channel);
-    log(`用户 ${socket.id} 加入频道 ${channel}`);
-  });
-
-  // 接收普通消息并广播给对应频道
-  socket.on("message", (data) => {
-    if (!data.channel || !isValidChannel(data.channel) || !data.text || typeof data.text !== "string") {
-      log("收到无效消息，未发送");
-      socket.emit("error", { message: "无效消息，无法发送" });
-      return;
-    }
-    log(`收到消息发送至频道 ${data.channel}:`, data);
-    io.to(data.channel).emit("message", { ...data, id: Date.now() }); // 广播给对应频道
-  });
-
-  // 接收文件消息并广播给对应频道
-  socket.on("fileMessage", (data) => {
-    if (!data.channel || !isValidChannel(data.channel) || !data.fileName || !data.fileUrl) {
-      log("收到无效文件消息，未发送");
-      socket.emit("error", { message: "无效文件消息，无法发送" });
-      return;
-    }
-    log(`收到文件消息发送至频道 ${data.channel}:`, data);
-    io.to(data.channel).emit("fileMessage", { ...data, id: Date.now() }); // 广播文件消息
-  });
-
-  socket.on("disconnect", () => {
-    log(`用户已断开连接 ${socket.id}`);
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  log(`服务器运行在端口 ${PORT}`);
-});
-
-EOF
-
-cd "$BACKEND_DIR"
-npm install
-pm2 start app.js --name chat-backend
-pm2 save
-
-# 7. 配置 Nginx
-echo "7. 配置 Nginx..."
-sudo bash -c "cat > /etc/nginx/sites-available/chat-app" <<EOF
-server {
-    listen 80;
-    server_name $DOMAIN;
-    return 301 https://\$host\$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name $DOMAIN;
-
-    ssl_certificate $SSL_CERT;
-    ssl_certificate_key $SSL_KEY;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    root /var/www/html;
-    index index.html;
-
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$host;
-    }
-}
-EOF
-
-sudo ln -s /etc/nginx/sites-available/chat-app /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
-
-# 8. 配置并申请 SSL 证书
-echo "8. 请输入您的域名（例如: example.com）:"
-read DOMAIN
-
-echo "正在申请 SSL 证书..."
+# 10. 配置 SSL 证书
+echo "11. 配置 SSL 证书..."
 sudo certbot --nginx -d $DOMAIN
-sudo systemctl reload nginx
 
-# 自动更新证书
-echo "9. 配置自动更新任务..."
-sudo bash -c "echo '0 3 * * * certbot renew --quiet && systemctl reload nginx' >> /etc/crontab"
+# 11. 配置自动更新证书
+echo "12. 配置证书自动更新..."
+(crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && systemctl reload nginx") | crontab -
 
-# 完成
-echo "========== 部署完成 =========="
-echo "访问: https://$DOMAIN"
+# 结束
+echo "部署完成，访问您的网站: https://$DOMAIN"
