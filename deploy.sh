@@ -98,12 +98,10 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
       </div>
 
       <div class="input-container">
-        <input
-          v-model="newMessage"
-          placeholder="输入消息..."
-          @input="checkUploadFileCommand"
-          class="input-box"
-        />
+        <input v-model="newMessage" placeholder="输入消息..."
+  @keydown.enter="sendMessage"
+  class="input-box"
+/>
         <button @click="sendMessage" class="send-button">发送</button>
         <button @click="triggerFileUpload" class="upload-button">上传文件</button>
         <input
