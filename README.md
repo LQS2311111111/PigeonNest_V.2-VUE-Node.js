@@ -153,3 +153,13 @@ bash undeploy.sh
 npm run build // 构建静态文件
 sudo cp -r dist/* /var/www/html/ // 将构建后的文件复制到 Nginx 目录
 ```
+
+PM2开启持久化后端服务;
+
+```bash
+pm2 start app.js --name "pigeon-nest-backend" //启动后端应用;这里，--name 用来指定进程的名称，便于后续管理。
+pm2 list //查看所有由 PM2 管理的进程
+pm2 logs //查看所有进程的日志
+pm2 restart pigeon-nest-backend //如果你修改了后端或前端代码，需要重启应用来生效，可以使用重启应用
+pm2 save //保存当前的进程列表
+pm2 startup //重启PM2服务
