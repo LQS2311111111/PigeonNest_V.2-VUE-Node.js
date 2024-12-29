@@ -1,5 +1,5 @@
 # 匿名鸽巢（2.0） - Pigeon Nest
-
+---
 ### 新功能与改进
 **即阅即焚**：所有消息在被接收并查看后会自动销毁，确保隐私和信息的即时性。
 **去中心化通讯**：通过 WebSocket 实现去中心化的实时消息传递，不依赖传统服务器存储。
@@ -7,10 +7,10 @@
 **自定义频道加入**：用户通过输入频道号来加入不同的聊天频道，无需注册用户名。
 **前端界面优化**：界面简约且现代化，优化了用户体验和界面布局。
 **文件上传与分享**：支持图片和PDF文件的上传与即时分享。
-
+---
 Test_Webside实例演示:  
 [https://chat.777cloud.life](https://chat.777cloud.life)
-
+---
 ## 联系方式
 
 1. Gmail邮箱:  
@@ -19,7 +19,6 @@ Test_Webside实例演示:
    [https://t.me/WoeKen_viki_songfx_SHOP](https://t.me/WoeKen_viki_songfx_SHOP)
 3. （付费服务）项目开发者协助部署:  
    `#可添加开发者Telegram在内交易并部署。`
-
 ---
 
 ## 项目概述
@@ -124,8 +123,8 @@ ufw allow 80     # 放行 HTTP 服务端口
 ufw allow 443    # 放行 HTTPS 服务端口
 git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git  # 拉取 GitHub 项目
 cd chat-app
-chmod +x deploy.sh
-bash deploy.sh
+chmod +x deploy_install_Pigeon Nest.sh
+bash deploy_install_Pigeon Nest.sh
 ```
 2.部署脚本将自动执行以下操作：
 
