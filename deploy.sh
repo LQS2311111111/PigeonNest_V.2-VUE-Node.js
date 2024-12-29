@@ -118,7 +118,7 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 
       <!-- GitHub 项目跳转按钮 -->
       <div class="github-link">
-        <button @click="https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git" class="github-button">查看我的 GitHub 项目</button>
+        <button @click=""goToGitHub" class="github-button">查看我的 GitHub 项目</button>
       </div>
     </div>
   </div>
