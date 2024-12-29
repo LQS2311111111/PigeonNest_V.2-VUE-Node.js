@@ -496,111 +496,105 @@ cat > "$BACKEND_DIR/package.json" <<EOF
 EOF
 
 cat > "$BACKEND_DIR/app.js" <<EOF
-const http = require('http');
-const express = require('express');
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const crypto = require("crypto");
+
 const app = express();
 const server = http.createServer(app);
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto'); // 引入 crypto 模块
-const logStream = fs.createWriteStream(path.join(__dirname, 'chat-app-backend.log'), { flags: 'a' });
+const io = new Server(server);
 
-console.log = (...args) => {
-  logStream.write(args.join(' ') + '\n');
-  process.stdout.write(args.join(' ') + '\n');
-};
+app.use(express.json());
 
-console.error = (...args) => {
-  logStream.write(args.join(' ') + '\n');
-  process.stderr.write(args.join(' ') + '\n');
-};
+const messages = {}; // 内存中的消息存储 { messageId: message }
+const fileStorage = {}; // 存储上传的文件 { fileId: fileData }
 
-// 用于存储在线用户列表，便于后续管理
-let onlineUsers = {};
-const io = require('socket.io')(server, {
-  path: '/socket.io/',
-  transports: ['websocket', 'polling'],
-  cors: {
-    origin: "https://chat.777cloud.life",
-    methods: ["GET", "POST"]
-  }
-});
+// 工具函数：生成唯一 ID
+function generateId() {
+  return crypto.randomBytes(16).toString("hex");
+}
 
-//// 固定的密钥及其哈希值
-//const validKeyHash = "a8f5c88d2a1f8a5c5f88f7f8b0f4c7b74bb8ef8b6d5f02e9d09e5477b963a350"; // 使用预先存储的密钥的哈希值
-
-// 处理连接
-io.on('connection', (socket) => {
-  console.log(`a user connected: ${socket.id}`);
-  let userName = `User_${socket.id.substring(0, 6)}`; // 使用 socket.id 的前6位作为用户名的一部分
-  onlineUsers[socket.id] = userName;
-
-  socket.on('keyCheck', (key) => {
-    // 对用户传来的密钥进行哈希处理
-    const hashedKey = crypto.createHash('sha256').update(key).digest('hex');
-
-    // 如果密钥哈希正确，加入主频道，否则加入其他频道
-    if (hashedKey === validKeyHash) {
-      socket.join('main'); // 主频道
-    } else {
-      socket.join('other'); // 其他频道
-    }
-
-    io.emit('userConnected', { userName, socketId: socket.id });
-  });
-
-  // 监听客户端发送的消息
-  socket.on('message', (msg) => {
-    io.emit('message', {
-      ...msg,
-      senderName: userName,
-      senderId: socket.id,
-      timestamp: new Date(),
-    });
-  });
-
-  socket.on('fileMessage', (msg) => {
-    io.emit('fileMessage', {
-      ...msg,
-      senderName: userName,
-      senderId: socket.id,
-      timestamp: new Date(),
-    });
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`user disconnected: ${socket.id}`);
-    delete onlineUsers[socket.id];
-    io.emit('userDisconnected', { userName, socketId: socket.id });
-  });
-});
-// 密钥验证路由
-app.post("/validateKey", express.json(), (req, res) => {
+// 验证密钥接口
+app.post("/validateKey", (req, res) => {
   const { key } = req.body;
 
-  // 哈希密钥验证
-  const hash = crypto.createHash("sha256").update(key).digest("hex");
-
-  if (hash === validHashedKey) {
-    res.json({ success: true, message: "密钥验证成功" });
+  // 用于模拟的密钥验证，实际项目可替换为数据库查询或更安全的实现
+  const validKeyHash = "your_predefined_hashed_key"; // 预设的哈希值
+  if (key === validKeyHash) {
+    res.json({ success: true });
   } else {
     res.status(400).json({ success: false, message: "密钥验证失败" });
   }
 });
-app.post('/validateKey', express.json(), (req, res) => {
-  const { key } = req.body;
-  const validKeyHash = '正确的哈希值';  // 替换为实际的正确哈希值
 
-  // 检查哈希值是否匹配
-  if (key === validKeyHash) {
-    return res.json({ success: true });
-  } else {
-    return res.status(400).json({ success: false });
-  }
+// WebSocket连接和事件处理
+io.on("connection", (socket) => {
+  console.log("用户已连接", socket.id);
+
+  // 处理接收到的消息
+  socket.on("message", (data) => {
+    const messageId = generateId();
+    const message = {
+      ...data,
+      messageId,
+      isRead: false,
+      timestamp: Date.now(),
+    };
+
+    messages[messageId] = message;
+
+    // 广播消息给其他客户端
+    socket.broadcast.emit("message", message);
+    console.log("消息存储并广播：", message);
+  });
+
+  // 处理文件消息
+  socket.on("fileMessage", (data) => {
+    const messageId = generateId();
+    const fileId = generateId();
+
+    fileStorage[fileId] = data.fileUrl; // 假设已上传文件有对应URL
+    const message = {
+      ...data,
+      messageId,
+      fileId,
+      isRead: false,
+      timestamp: Date.now(),
+    };
+
+    messages[messageId] = message;
+
+    // 广播消息给其他客户端
+    socket.broadcast.emit("fileMessage", message);
+    console.log("文件消息存储并广播：", message);
+  });
+
+  // 处理即阅即焚请求
+  socket.on("readMessage", (messageId) => {
+    const message = messages[messageId];
+    if (message) {
+      delete messages[messageId];
+
+      // 如果是文件消息，移除文件存储记录
+      if (message.fileId) {
+        delete fileStorage[message.fileId];
+      }
+
+      // 通知其他客户端删除消息
+      io.emit("deleteMessage", messageId);
+      console.log("消息已被销毁：", messageId);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    console.log("用户已断开连接", socket.id);
+  });
 });
 
-server.listen(3000, () => {
-  console.log('Server is running on http://127.0.0.1:3000');
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+  console.log(`服务器运行在端口 ${PORT}`);
 });
 EOF
 
