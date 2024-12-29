@@ -159,7 +159,7 @@ export default {
 
       try {
         const hashedKey = await this.hashKey(this.key);
-        const response = await fetch("https://your-domain.com/validateKey", {
+        const response = await fetch("https://chat.777cloud.life/validateKey", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
