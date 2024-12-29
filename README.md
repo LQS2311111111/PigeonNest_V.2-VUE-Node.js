@@ -121,7 +121,7 @@ deploy.sh：自动化部署脚本，通常用于安装依赖、配置服务器�
 ufw allow 3000   # 放行 WebSocket 服务端口
 ufw allow 80     # 放行 HTTP 服务端口
 ufw allow 443    # 放行 HTTPS 服务端口
-git clone https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git  # 拉取 GitHub 项目
+git clone https://github.com/LQS2311111111/PigeonNest_V.2-VUE-Node.js.git # 拉取 GitHub 项目
 cd chat-app
 chmod +x deploy_install_Pigeon Nest.sh
 bash deploy_install_Pigeon Nest.sh
