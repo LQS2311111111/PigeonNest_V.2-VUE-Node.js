@@ -99,7 +99,7 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 
       <div class="input-container">
         <!-- GitHub 图标按钮 -->
-        <a href="https://github.com/LQS2311111111/chat-app-VUE-Node.js-.git" target="_blank" class="github-button">
+        <a href="https://github.com/LQS2311111111/PigeonNest_V.2-VUE-Node.js.git" target="_blank" class="github-button">
           <i class="fab fa-github"></i>
         </a>
 
