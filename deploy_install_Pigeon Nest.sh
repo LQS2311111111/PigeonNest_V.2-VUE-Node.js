@@ -263,7 +263,154 @@ export default {
 </script>
 
 <style scoped>
-/* 样式略 */
+/* 样式：全局容器 */
+.chat-container {
+  font-family: 'Arial', sans-serif;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #1f1b2e; /* 黑紫色背景 */
+  color: white; /* 文字颜色为白色 */
+  font-size: 16px;
+}
+
+/* 频道号输入页面 */
+.key-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  flex-direction: column;
+}
+
+.key-input {
+  padding: 15px;
+  font-size: 18px;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  margin-bottom: 20px;
+  width: 300px;
+  text-align: center;
+}
+
+.key-button {
+  padding: 15px 30px;
+  background-color: #7a4dff; /* 紫色 */
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.key-button:hover {
+  background-color: #5b39b7; /* 深紫色 */
+}
+
+.error-message {
+  color: red;
+  font-size: 14px;
+  margin-top: 10px;
+}
+
+/* 头部样式 */
+.header {
+  padding: 20px;
+  background-color: #111;
+  color: white;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  border-bottom: 2px solid #444;
+}
+
+/* 消息列表 */
+.messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: #2c2a3c; /* 深紫色背景 */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 160px);
+}
+
+/* 消息气泡 */
+.message {
+  display: flex;
+  flex-direction: column;
+  max-width: 70%;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.sent {
+  background-color: #7a4dff; /* 紫色 */
+  align-self: flex-end;
+}
+
+.received {
+  background-color: #444; /* 深灰 */
+  align-self: flex-start;
+}
+
+.sender-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #ccc;
+}
+
+.message-content {
+  font-size: 14px;
+  word-wrap: break-word;
+}
+
+.file-preview {
+  max-width: 150px;
+  max-height: 150px;
+  object-fit: cover;
+  border-radius: 5px;
+}
+
+.input-container {
+  padding: 20px;
+  background-color: #1b1b2f;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-box {
+  flex-grow: 1;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 20px;
+  border: none;
+  background-color: #333;
+  color: white;
+}
+
+.send-button, .upload-button {
+  padding: 10px 20px;
+  border-radius: 50%;
+  background-color: #7a4dff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+.send-button:hover, .upload-button:hover {
+  background-color: #5b39b7;
+}
+
+.github-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: #fff;
+  font-size: 24px;
+}
 </style>
 EOF
 
