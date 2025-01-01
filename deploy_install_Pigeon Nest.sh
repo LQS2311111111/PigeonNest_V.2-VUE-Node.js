@@ -414,6 +414,108 @@ export default {
 </style>
 EOF
 
+echo "创建后端 app.js 文件..."
+cat > "$BACKEND_DIR/app.js" <<'EOF'
+const express = require("express");
+const fileUpload = require("express-fileupload");
+const path = require("path");
+const fs = require("fs");
+const http = require("http");
+const { Server } = require("socket.io");
+const morgan = require("morgan");
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
+// 上传文件存储目录
+const uploadDir = path.join(__dirname, "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+// 中间件配置
+app.use(morgan("dev")); // HTTP 请求日志
+app.use(express.static("public")); // 前端静态资源
+app.use(
+  fileUpload({
+    limits: { fileSize: 20 * 1024 * 1024 }, // 最大上传文件大小：20MB
+    abortOnLimit: true,
+    responseOnLimit: "上传文件大小超出限制！",
+  })
+);
+app.use("/uploads", express.static(uploadDir)); // 提供上传的文件
+
+// 上传文件接口
+app.post("/upload", (req, res) => {
+  const file = req.files?.file;
+  if (!file) {
+    return res.status(400).send("没有文件上传");
+  }
+
+  // 验证文件类型
+  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+  if (!allowedTypes.includes(file.mimetype)) {
+    return res.status(400).send("只支持 JPEG、PNG 或 PDF 文件");
+  }
+
+  // 存储文件
+  const timeStamp = Date.now();
+  const sanitizedFileName = file.name.replace(/[\s\#]/g, "_"); // 替换文件名中的空格和特殊字符
+  const fileName = `${timeStamp}_${sanitizedFileName}`;
+  const filePath = path.join(uploadDir, fileName);
+
+  file.mv(filePath, (err) => {
+    if (err) {
+      console.error("文件上传错误:", err);
+      return res.status(500).send("文件上传失败");
+    }
+    const fileUrl = `/uploads/${fileName}`;
+    res.send({ fileUrl }); // 返回文件地址
+  });
+});
+
+// WebSocket 处理
+io.on("connection", (socket) => {
+  console.log("客户端连接成功:", socket.id);
+
+  // 加入频道
+  socket.on("joinChannel", (channel) => {
+    if (!channel) return;
+    socket.join(channel);
+    console.log(`客户端已加入频道: ${channel}`);
+  });
+
+  // 处理消息
+  socket.on("message", (msg) => {
+    if (!msg || !msg.channel) return;
+    io.to(msg.channel).emit("message", msg); // 广播到指定频道
+  });
+
+  // 处理文件消息
+  socket.on("fileMessage", (msg) => {
+    if (!msg || !msg.channel) return;
+    io.to(msg.channel).emit("fileMessage", msg);
+  });
+
+  // 客户端断开连接
+  socket.on("disconnect", () => {
+    console.log("客户端断开连接:", socket.id);
+  });
+});
+
+// 捕获未处理异常
+process.on("uncaughtException", (err) => {
+  console.error("未捕获异常:", err);
+});
+
+// 启动服务
+const port = process.env.PORT || 3000;
+server.listen(port, () => {
+  console.log(`服务器运行在 http://$DOMAIN:${port}`);
+});
+EOF
+
 # 6. 安装前端依赖并构建项目
 echo "6. 安装前端依赖并构建项目..."
 cd "$FRONTEND_DIR" || exit
@@ -426,7 +528,7 @@ cd "$BACKEND_DIR" || exit
 npm install || { echo '后端依赖安装失败'; exit 1; }
 
 echo "8. 启动后端应用..."
-pm2 start "$BACKEND_DIR/server.js" --name "chat-app-backend"
+pm2 start "$BACKEND_DIR/app.js" --name "chat-app-backend"
 
 # 8. 配置 Nginx
 echo "9. 配置 Nginx..."
