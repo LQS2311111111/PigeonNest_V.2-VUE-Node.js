@@ -110,7 +110,6 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           @keyup.enter="sendMessage"
           class="input-box"
         />
-        <button @click="sendMessage" class="send-button">发送</button>
         <button @click="triggerFileUpload" class="upload-button">上传文件</button>
         <input
           type="file"
@@ -118,7 +117,8 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           ref="fileInput"
           @change="handleFileUpload"
           class="file-input"
-          style="display: none;"/>
+          style="display: none;"
+        />
       </div>
     </div>
   </div>
@@ -126,8 +126,6 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 
 <script>
 import { io } from "socket.io-client";
-
-// 在需要使用 FontAwesome 的 Vue 组件中引入
 import '@fortawesome/fontawesome-free/css/all.min.css';
 
 export default {
@@ -150,15 +148,19 @@ export default {
         alert("频道号不能为空！");
         return;
       }
-
+    
       // 发送加入频道事件
       this.socket.emit("joinChannel", this.channel);
       console.log(`已加入频道: ${this.channel}`);
-      
+    
       // 更新状态
       this.isChannelValid = true;
-      this.channelError = false; // 清除错误提示
-
+      this.channelError = false;
+    
+      // 清除所有现有的消息监听，确保每次只有一个消息处理器
+      this.socket.removeAllListeners("message");
+      this.socket.removeAllListeners("fileMessage");
+    
       // 监听频道消息
       this.socket.on("message", (msg) => {
         if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
@@ -167,7 +169,7 @@ export default {
           this.scheduleMessageDeletion(msg); // 设置消息过期时间
         }
       });
-
+    
       // 监听文件消息
       this.socket.on("fileMessage", (msg) => {
         if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
@@ -183,34 +185,34 @@ export default {
       if (!this.newMessage.trim() && !this.selectedFile) return;
 
       const msg = {
-        id: Date.now(), // 添加唯一id，避免重复
+        id: Date.now(),
         text: this.newMessage,
         sender: "self",
         type: this.selectedFile ? "file" : "text",
         fileName: this.selectedFile ? this.selectedFile.name : null,
         fileUrl: this.selectedFile ? URL.createObjectURL(this.selectedFile) : null,
-        channel: this.channel, // 所属频道号
-        expirationTime: Date.now() + 30000, // 设置消息过期时间（30秒）
+        channel: this.channel,
+        expirationTime: Date.now() + 30000, 
       };
 
-      this.messages.push(msg); // 仅在消息发送成功后添加到本地
+      this.messages.push(msg); // 添加到本地
       this.socket.emit(this.selectedFile ? "fileMessage" : "message", msg); // 发送消息
       console.log("已发送消息:", msg);
       this.newMessage = ""; // 清空输入框
-      this.selectedFile = null; // 清空选中文件
+      this.selectedFile = null;
 
-      // 设置定时删除自己发送的消息
+      // 设置定时删除消息
       this.scheduleMessageDeletion(msg);
     },
 
     // 定时删除消息
     scheduleMessageDeletion(msg) {
       setTimeout(() => {
-        this.messages = this.messages.filter(m => m.id !== msg.id); // 删除该消息
-      }, msg.expirationTime - Date.now()); // 根据过期时间来删除消息
+        this.messages = this.messages.filter(m => m.id !== msg.id);
+      }, msg.expirationTime - Date.now());
     },
 
-    // 触发文件上传逻辑
+    // 触发文件上传
     triggerFileUpload() {
       this.$refs.fileInput.click();
     },
@@ -225,7 +227,7 @@ export default {
 
       if (!allowedTypes.includes(file.type)) {
         alert("仅支持上传图片或PDF文件！");
-        this.$refs.fileInput.value = ""; // 清空选择的文件
+        this.$refs.fileInput.value = "";
         return;
       }
 
@@ -236,13 +238,13 @@ export default {
       }
 
       const msg = {
-        id: Date.now(), // 添加唯一id，避免重复
+        id: Date.now(),
         sender: "self",
         type: "file",
         fileName: file.name,
         fileUrl: URL.createObjectURL(file),
         channel: this.channel,
-        expirationTime: Date.now() + 30000, // 设置消息过期时间（30秒）
+        expirationTime: Date.now() + 30000,
       };
 
       this.messages.push(msg);
@@ -257,7 +259,7 @@ export default {
   },
 
   created() {
-    this.socket = io("https://your-server-domain"); // 替换为你的后端域名
+    this.socket = io("https://chat.777cloud.life"); // 使用实际的生产域名
   }
 };
 </script>
@@ -462,7 +464,7 @@ app.post("/upload", (req, res) => {
   // 存储文件
   const timeStamp = Date.now();
   const sanitizedFileName = file.name.replace(/[\s\#]/g, "_"); // 替换文件名中的空格和特殊字符
-  const fileName = `${timeStamp}_${sanitizedFileName}`;
+  const fileName = ${timeStamp}_${sanitizedFileName};
   const filePath = path.join(uploadDir, fileName);
 
   file.mv(filePath, (err) => {
@@ -470,7 +472,7 @@ app.post("/upload", (req, res) => {
       console.error("文件上传错误:", err);
       return res.status(500).send("文件上传失败");
     }
-    const fileUrl = `/uploads/${fileName}`;
+    const fileUrl = /uploads/${fileName};
     res.send({ fileUrl }); // 返回文件地址
   });
 });
@@ -483,7 +485,7 @@ io.on("connection", (socket) => {
   socket.on("joinChannel", (channel) => {
     if (!channel) return;
     socket.join(channel);
-    console.log(`客户端已加入频道: ${channel}`);
+    console.log(客户端已加入频道: ${channel});
   });
 
   // 处理消息
@@ -512,8 +514,8 @@ process.on("uncaughtException", (err) => {
 // 启动服务
 const port = process.env.PORT || 3000;
 server.listen(port, () => {
-  console.log(`服务器运行在 http://$DOMAIN:${port}`);
-});
+	console.log(`服务器运行在 http://chat.777cloud.life:${port}`);
+}
 EOF
 
 # 6. 安装前端依赖并构建项目
