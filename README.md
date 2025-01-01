@@ -19,6 +19,7 @@ Test_Webside实例演示:
    [https://t.me/WoeKen_viki_songfx_SHOP](https://t.me/WoeKen_viki_songfx_SHOP)
 3. （付费服务）项目开发者协助部署:  
    `#可添加开发者Telegram在内交易并部署。`
+   ![开发者打赏:](photo_2024-12-28_12-12-34.jpg)
 ---
 
 ## 项目概述
