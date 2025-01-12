@@ -41,42 +41,49 @@ cat > "$FRONTEND_DIR/package.json" <<EOF
   "version": "1.0.0",
   "scripts": {
     "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build"
+    "build": "vue-cli-service build",
+    "start": "npm run serve"
   },
   "dependencies": {
-    "vue": "^3.0.0",
-    "socket.io-client": "^4.0.0"
+    "@fortawesome/fontawesome-free": "^6.7.2",
+    "axios": "^1.7.9",
+    "socket.io-client": "^4.0.0",
+    "vue": "^3.5.13",
+    "vue-meta": "^2.4.0",
+    "vue-router": "^4.5.0",
+    "vuex": "^4.1.0"
   },
   "devDependencies": {
-    "@vue/cli-service": "^5.0.0"
-  }
+    "@vue/cli-service": "^5.0.8"
+  },
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }
 EOF
 
 mkdir -p "$FRONTEND_DIR/src"
 
 cat > "$FRONTEND_DIR/src/main.js" <<EOF
+// 引入 Vue 和 App
 import { createApp } from 'vue';
 import App from './App.vue';
+
+// 设置页面标题
+document.title = "匿名鸽巢 - Pigeon Nest";
 createApp(App).mount('#app');
 EOF
 
 cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 <template>
   <div id="app" class="chat-container">
-    <!-- 频道号输入页 -->
     <div v-if="!isChannelValid" class="key-container">
-      <input
-        v-model="channel"
-        type="text"
-        class="key-input"
-        placeholder="请输入频道号"
-      />
+      <input v-model="channel" type="text" class="key-input" placeholder="请输入频道号" />
       <button @click="joinChannel" class="key-button">加入频道</button>
       <div v-if="channelError" class="error-message">请输入有效的频道号。</div>
     </div>
-
-    <!-- 聊天页面 -->
     <div v-else>
       <div class="header">匿名鸽巢 - Pigeon Nest - 频道：{{ channel }}</div>
       <div class="messages">
@@ -89,21 +96,21 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           <div class="sender-name" v-if="msg.senderName">{{ msg.senderName }}</div>
           <div class="message-content">
             <span v-if="msg.type === 'text'">{{ msg.text }}</span>
-            <span v-if="msg.type === 'file'">
-              <img v-if="msg.fileUrl" :src="msg.fileUrl" alt="file preview" class="file-preview"/>
-              <a v-if="!msg.fileUrl" :href="msg.fileUrl" target="_blank">{{ msg.fileName }}</a>
-            </span>
+            <div v-else-if="msg.type === 'file'">
+              <img
+                v-if="msg.localPreview || (msg.fileUrl && /\.(png|jpe?g)$/i.test(msg.fileUrl))"
+                :src="msg.localPreview || msg.fileUrl"
+                alt="file preview"
+                class="file-preview"
+              />
+              <a v-else :href="msg.fileUrl" target="_blank" class="file-link">
+                {{ msg.fileName }}
+              </a>
+            </div>
           </div>
         </div>
       </div>
-
       <div class="input-container">
-        <!-- GitHub 图标按钮 -->
-        <a href="https://github.com/LQS2311111111/PigeonNest_V.2-VUE-Node.js.git" target="_blank" class="github-button">
-          <i class="fab fa-github"></i>
-        </a>
-
-        <!-- 输入框区域 -->
         <input
           v-model="newMessage"
           placeholder="输入消息..."
@@ -111,14 +118,7 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
           class="input-box"
         />
         <button @click="triggerFileUpload" class="upload-button">上传文件</button>
-        <input
-          type="file"
-          id="file-upload"
-          ref="fileInput"
-          @change="handleFileUpload"
-          class="file-input"
-          style="display: none;"
-        />
+        <input type="file" ref="fileInput" @change="handleFileUpload" class="file-input" style="display: none;" />
       </div>
     </div>
   </div>
@@ -126,141 +126,126 @@ cat > "$FRONTEND_DIR/src/App.vue" <<EOF
 
 <script>
 import { io } from "socket.io-client";
-import '@fortawesome/fontawesome-free/css/all.min.css';
+import axios from "axios";
 
 export default {
   data() {
     return {
-      channel: "", // 用户输入的频道号
-      isChannelValid: false, // 频道号验证状态
-      channelError: false, // 错误提示
-      newMessage: "", // 用户输入的文本消息
-      messages: [], // 消息列表
-      socket: null, // WebSocket 连接实例
-      selectedFile: null, // 选中的文件
+      channel: "",
+      isChannelValid: false,
+      channelError: false,
+      newMessage: "",
+      messages: [],
+      socket: null,
     };
   },
   methods: {
-    // 加入频道
     joinChannel() {
       if (!this.channel.trim()) {
         this.channelError = true;
-        alert("频道号不能为空！");
         return;
       }
-    
-      // 发送加入频道事件
-      this.socket.emit("joinChannel", this.channel);
-      console.log(`已加入频道: ${this.channel}`);
-    
-      // 更新状态
-      this.isChannelValid = true;
       this.channelError = false;
-    
-      // 清除所有现有的消息监听，确保每次只有一个消息处理器
-      this.socket.removeAllListeners("message");
-      this.socket.removeAllListeners("fileMessage");
-    
-      // 监听频道消息
-      this.socket.on("message", (msg) => {
-        if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
-          console.log("接收到消息:", msg);
-          this.messages.push(msg); // 添加到消息列表
-          this.scheduleMessageDeletion(msg); // 设置消息过期时间
-        }
-      });
-    
-      // 监听文件消息
-      this.socket.on("fileMessage", (msg) => {
-        if (msg.channel === this.channel && !this.messages.some(m => m.id === msg.id)) {
-          console.log("接收到文件消息:", msg);
-          this.messages.push(msg); // 添加到消息列表
-          this.scheduleMessageDeletion(msg); // 设置消息过期时间
-        }
-      });
+      this.socket.emit("joinChannel", this.channel);
+      this.isChannelValid = true;
+
+      // 监听文本消息和文件消息
+      this.socket.on("message", this.handleIncomingMessage);
+      this.socket.on("fileMessage", this.handleIncomingMessage);
     },
 
-    // 发送文本或文件消息
+    handleIncomingMessage(msg) {
+      if (msg.channel === this.channel && !this.messages.some((m) => m.id === msg.id)) {
+        this.messages.push(msg); // 添加消息
+        this.scheduleMessageDeletion(msg); // 删除过期消息
+      }
+    },
+
     sendMessage() {
-      if (!this.newMessage.trim() && !this.selectedFile) return;
+      if (!this.newMessage.trim()) return;
 
       const msg = {
         id: Date.now(),
         text: this.newMessage,
         sender: "self",
-        type: this.selectedFile ? "file" : "text",
-        fileName: this.selectedFile ? this.selectedFile.name : null,
-        fileUrl: this.selectedFile ? URL.createObjectURL(this.selectedFile) : null,
-        channel: this.channel,
-        expirationTime: Date.now() + 30000, 
-      };
-
-      this.messages.push(msg); // 添加到本地
-      this.socket.emit(this.selectedFile ? "fileMessage" : "message", msg); // 发送消息
-      console.log("已发送消息:", msg);
-      this.newMessage = ""; // 清空输入框
-      this.selectedFile = null;
-
-      // 设置定时删除消息
-      this.scheduleMessageDeletion(msg);
-    },
-
-    // 定时删除消息
-    scheduleMessageDeletion(msg) {
-      setTimeout(() => {
-        this.messages = this.messages.filter(m => m.id !== msg.id);
-      }, msg.expirationTime - Date.now());
-    },
-
-    // 触发文件上传
-    triggerFileUpload() {
-      this.$refs.fileInput.click();
-    },
-
-    // 处理文件上传
-    handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
-      const maxSizeMB = 5;
-
-      if (!allowedTypes.includes(file.type)) {
-        alert("仅支持上传图片或PDF文件！");
-        this.$refs.fileInput.value = "";
-        return;
-      }
-
-      if (file.size > maxSizeMB * 1024 * 1024) {
-        alert(`文件大小不能超过 ${maxSizeMB} MB！`);
-        this.$refs.fileInput.value = "";
-        return;
-      }
-
-      const msg = {
-        id: Date.now(),
-        sender: "self",
-        type: "file",
-        fileName: file.name,
-        fileUrl: URL.createObjectURL(file),
+        type: "text",
         channel: this.channel,
         expirationTime: Date.now() + 30000,
       };
 
-      this.messages.push(msg);
-      this.socket.emit("fileMessage", msg);
-      console.log("已发送文件消息:", msg);
-      this.$refs.fileInput.value = "";
-      this.selectedFile = null;
-
-      // 设置定时删除文件消息
+      this.messages.push(msg); // 本地显示消息
+      this.socket.emit("message", msg); // 通过 Socket 广播
+      this.newMessage = ""; // 清空输入框
       this.scheduleMessageDeletion(msg);
-    }
-  },
+    },
 
+    triggerFileUpload() {
+      this.$refs.fileInput.click();
+    },
+
+    handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const allowedTypes = ["image/jpeg", "image/png"];
+      const maxSizeMB = 10;
+
+      if (!allowedTypes.includes(file.type) || file.size > maxSizeMB * 1024 * 1024) {
+        alert("请上传小于 10MB 的图片文件！");
+        this.$refs.fileInput.value = "";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const previewUrl = e.target.result;
+        const msg = {
+          id: Date.now(),
+          sender: "self",
+          type: "file",
+          fileName: file.name,
+          localPreview: previewUrl,
+          expirationTime: Date.now() + 30000,
+          channel: this.channel,
+        };
+
+        this.messages.push(msg); // 添加本地预览
+        this.scheduleMessageDeletion(msg);
+
+        const formData = new FormData();
+        formData.append("upload", file);
+
+        // 上传文件到服务器
+        axios
+          .post("https://chat.777cloud.life/upload", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+          })
+          .then((response) => {
+            msg.fileUrl = response.data.fileUrl; // 服务器返回的 URL
+            msg.localPreview = null; // 替换本地预览为服务器 URL
+            this.socket.emit("fileMessage", msg); // 广播文件消息
+          })
+          .catch((error) => {
+            alert("文件上传失败，请重试！");
+            console.error(error);
+          })
+          .finally(() => {
+            this.$refs.fileInput.value = "";
+          });
+      };
+
+      reader.readAsDataURL(file); // 文件预览
+    },
+
+    scheduleMessageDeletion(msg) {
+      setTimeout(() => {
+        this.messages = this.messages.filter((m) => m.id !== msg.id);
+      }, msg.expirationTime - Date.now());
+    },
+  },
   created() {
-    this.socket = io("https://chat.777cloud.life"); // 使用实际的生产域名
-  }
+    this.socket = io("https://chat.777cloud.life");
+  },
 };
 </script>
 
@@ -395,10 +380,10 @@ export default {
 
 .send-button, .upload-button {
   padding: 10px 20px;
-  border-radius: 50%;
   background-color: #7a4dff;
   color: white;
   border: none;
+  border-radius: 20px;
   cursor: pointer;
 }
 
@@ -406,116 +391,120 @@ export default {
   background-color: #5b39b7;
 }
 
+/* GitHub 图标 */
 .github-button {
   position: absolute;
   top: 20px;
   right: 20px;
-  color: #fff;
   font-size: 24px;
+  color: white;
 }
 </style>
 EOF
 
 echo "创建后端 app.js 文件..."
 cat > "$BACKEND_DIR/app.js" <<'EOF'
-const express = require("express");
-const fileUpload = require("express-fileupload");
-const path = require("path");
-const fs = require("fs");
-const http = require("http");
-const { Server } = require("socket.io");
-const morgan = require("morgan");
+const express = require('express');
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+const socketIo = require('socket.io');
+const fileUpload = require('express-fileupload');
 
+// SSL 证书配置
+const privateKey = fs.readFileSync('/etc/letsencrypt/live/chat.777cloud.life/privkey.pem', 'utf8');
+const certificate = fs.readFileSync('/etc/letsencrypt/live/chat.777cloud.life/fullchain.pem', 'utf8');
+const ca = fs.readFileSync('/etc/letsencrypt/live/chat.777cloud.life/chain.pem', 'utf8');
+const credentials = { key: privateKey, cert: certificate, ca: ca };
+
+// 初始化服务
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server);
+const server = https.createServer(credentials, app);
+const io = socketIo(server);
 
-// 上传文件存储目录
-const uploadDir = path.join(__dirname, "uploads");
+// 静态文件目录，服务 Vue 编译后的文件
+const buildDir = path.join('/var/www/chat-app/frontend', 'dist');
+
+// 检查目录是否存在
+if (!fs.existsSync(buildDir)) {
+  console.error('构建目录不存在，请检查 Vue 项目的 dist 目录');
+} else {
+  app.use(express.static(buildDir));
+}
+
+// 文件上传目录
+const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir);
+  fs.mkdirSync(uploadDir, { recursive: true });
 }
 
 // 中间件配置
-app.use(morgan("dev")); // HTTP 请求日志
-app.use(express.static("public")); // 前端静态资源
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(
   fileUpload({
-    limits: { fileSize: 20 * 1024 * 1024 }, // 最大上传文件大小：20MB
-    abortOnLimit: true,
-    responseOnLimit: "上传文件大小超出限制！",
+    limits: { fileSize: 10 * 1024 * 1024 }, // 限制文件大小为 10MB
   })
 );
-app.use("/uploads", express.static(uploadDir)); // 提供上传的文件
+app.use('/upload', express.static(uploadDir)); // 让上传文件通过访问路径可以读取
 
-// 上传文件接口
-app.post("/upload", (req, res) => {
-  const file = req.files?.file;
+// 文件上传接口
+app.post('/upload', (req, res) => {
+  const file = req.files?.upload;
   if (!file) {
-    return res.status(400).send("没有文件上传");
+    return res.status(400).json({ error: '未检测到文件上传！' });
   }
 
-  // 验证文件类型
-  const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+  const allowedTypes = ['image/jpeg', 'image/png'];
   if (!allowedTypes.includes(file.mimetype)) {
-    return res.status(400).send("只支持 JPEG、PNG 或 PDF 文件");
+    return res.status(400).json({ error: '不支持的文件类型！' });
   }
 
-  // 存储文件
-  const timeStamp = Date.now();
-  const sanitizedFileName = file.name.replace(/[\s\#]/g, "_"); // 替换文件名中的空格和特殊字符
-  const fileName = ${timeStamp}_${sanitizedFileName};
+  const fileName = Date.now() + '-' + file.name.replace(/\s+/g, '_');
   const filePath = path.join(uploadDir, fileName);
 
   file.mv(filePath, (err) => {
     if (err) {
-      console.error("文件上传错误:", err);
-      return res.status(500).send("文件上传失败");
+      return res.status(500).json({ error: '文件上传失败！' });
     }
-    const fileUrl = /uploads/${fileName};
-    res.send({ fileUrl }); // 返回文件地址
+    res.json({ fileUrl: `https://chat.777cloud.life/upload/${fileName}` });
   });
 });
 
 // WebSocket 处理
-io.on("connection", (socket) => {
-  console.log("客户端连接成功:", socket.id);
+io.on('connection', (socket) => {
+  console.log('新客户端已连接');
 
-  // 加入频道
-  socket.on("joinChannel", (channel) => {
-    if (!channel) return;
-    socket.join(channel);
-    console.log(客户端已加入频道: ${channel});
+  socket.on('joinChannel', (channel) => {
+    socket.join(channel); // 客户端加入频道
+    console.log(`客户端加入频道：${channel}`);
   });
 
-  // 处理消息
-  socket.on("message", (msg) => {
-    if (!msg || !msg.channel) return;
-    io.to(msg.channel).emit("message", msg); // 广播到指定频道
+  socket.on('message', (msg) => {
+    console.log('接收到消息：', msg);
+    io.to(msg.channel).emit('message', msg); // 广播消息
   });
 
-  // 处理文件消息
-  socket.on("fileMessage", (msg) => {
-    if (!msg || !msg.channel) return;
-    io.to(msg.channel).emit("fileMessage", msg);
+  socket.on('fileMessage', (msg) => {
+    console.log('接收到文件消息：', msg);
+    // 广播文件消息
+    io.to(msg.channel).emit('fileMessage', msg);
   });
 
-  // 客户端断开连接
-  socket.on("disconnect", () => {
-    console.log("客户端断开连接:", socket.id);
+  socket.on('disconnect', () => {
+    console.log('客户端断开连接');
   });
 });
 
-// 捕获未处理异常
-process.on("uncaughtException", (err) => {
-  console.error("未捕获异常:", err);
+// 静态文件 fallback 配置
+app.get('*', (req, res) => {
+  res.sendFile(path.join(buildDir, 'index.html'));
 });
 
-// 启动服务
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
-	console.log(`服务器运行在 http://chat.777cloud.life:${port}`);
-}
+// 启动服务器
+server.listen(443, () => {
+  console.log('服务器运行在 https://chat.777cloud.life');
+});
 EOF
 
 # 6. 安装前端依赖并构建项目
@@ -530,7 +519,7 @@ cd "$BACKEND_DIR" || exit
 npm install || { echo '后端依赖安装失败'; exit 1; }
 
 echo "8. 启动后端应用..."
-pm2 start "$BACKEND_DIR/app.js" --name "chat-app-backend"
+pm2 start "$BACKEND_DIR/app.js" --name "Pigeon Nest-backend"
 
 # 8. 配置 Nginx
 echo "9. 配置 Nginx..."
@@ -550,4 +539,4 @@ echo "12. 配置证书自动更新..."
 (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && systemctl reload nginx") | crontab -
 
 # 结束
-echo "部署完成，访问您的网站: https://$DOMAIN"
+echo "Pigeon Nest部署完成，访问您的网站: https://$DOMAIN"
